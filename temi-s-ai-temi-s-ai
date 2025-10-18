@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Temi's simple Math Solver </title>
+    <style>
+        body {
+            background-color: blue;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin: 50px auto;
+            width: 400px;
+            background: rgba(0,0,0,0.3);
+            padding: 30px;
+            border-radius: 10px;
+        }
+        input, button {
+            font-size: 1.2em;
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+            border-radius: 5px;
+            border: none;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.3em;
+        }
+        .helper {
+            margin-top: 10px;
+            font-size: 1em;
+            color: #cce;
+        }
+        #rootControls {
+            display: none;
+            margin-top: 10px;
+        }
+        #rootControls button {
+            width: 32%;
+            display: inline-block;
+            margin-right: 1%;
+            background: #fff;
+            color: blue;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #rootControls button:last-child {
+            margin-right: 0;
+        }
+    </style>
+    <script>
+    // ...existing code...
+    let rootMode = false;
+
+    function solveMath() {
+        let question = document.getElementById('mathInput').value;
+        let result;
+
+        const qTrim = question.trim().toLowerCase();
+        // Enter root mode
+        if (qTrim === "root") {
+            rootMode = true;
+            document.getElementById('rootControls').style.display = "block";
+            document.getElementById('result').textContent = "Root mode on: use the buttons to insert √, ∛ or an n√(...) expression. Type /root to exit.";
+            return;
+        }
+        // Exit root mode
+        if (qTrim === "/root") {
+            rootMode = false;
+            document.getElementById('rootControls').style.display = "none";
+            document.getElementById('result').textContent = "";
+            return;
+        }
+
+        // Keep root controls visible while in root mode
+        if (rootMode) {
+            document.getElementById('rootControls').style.display = "block";
+        } else {
+            document.getElementById('rootControls').style.display = "none";
+        }
+
+        try {
+            // Replace ∛ with Math.cbrt
+            question = question.replace(/∛\s*\(?([^\)]+)\)?/g, function(match, p1) {
+                return `Math.cbrt(${p1})`;
+            });
+
+            // Replace √ with Math.sqrt (only simple usage like √9 or √(expr))
+            question = question.replace(/√\s*\(?([^\)]+)\)?/g, function(match, p1) {
+                return `Math.sqrt(${p1})`;
+            });
+
+            // Replace n√expr or n √ (expr) with Math.pow(expr, 1/n)
+            // matches forms like 3√8, 3√(8+1), 10 √ 100
+            question = question.replace(/(\d+)\s*√\s*\(?([^\)]+)\)?/g, function(match, n, expr) {
+                return `Math.pow(${expr},1/${n})`;
+            });
+
+            // Replace ^ with Math.pow for simple integer bases/exponents (e.g., 2^3)
+            question = question.replace(/(\d+)\s*\^\s*(\d+)/g, function(match, base, exp) {
+                return `Math.pow(${base},${exp})`;
+            });
+
+            // Allowlist check (transform Math.* tokens to safe placeholders for test)
+            const testStr = question
+                .replace(/Math\.sqrt/g, 'Mathsqrt')
+                .replace(/Math\.pow/g, 'Mathpow')
+                .replace(/Math\.cbrt/g, 'Mathcbrt');
+
+            if (/^[0-9\s\+\-\*\/\.\(\),MathsqrtMathpowMathcbrt]+$/.test(testStr)) {
+                result = eval(question);
+                document.getElementById('result').textContent = "Answer: " + result;
+            } else {
+                document.getElementById('result').textContent = "Please enter a valid math expression.";
+            }
+        } catch (e) {
+            document.getElementById('result').textContent = "Error solving the math problem.";
+        }
+    }
+
+    function insertRootSymbol() {
+        const input = document.getElementById('mathInput');
+        insertAtCursor(input, "√");
+        input.focus();
+        document.getElementById('result').textContent = "";
+    }
+
+    function insertCubeRoot() {
+        const input = document.getElementById('mathInput');
+        insertAtCursor(input, "∛");
+        input.focus();
+        document.getElementById('result').textContent = "";
+    }
+
+    function insertXRoot() {
+        const n = prompt("Enter root degree (n):", "3");
+        if (!n) return;
+        const nInt = parseInt(n, 10);
+        if (isNaN(nInt) || nInt <= 0) {
+            alert("Invalid root degree.");
+            return;
+        }
+        const input = document.getElementById('mathInput');
+        const insertText = `${nInt}√()`;
+        const pos = insertAtCursor(input, insertText);
+        // place cursor between the parentheses
+        const cursorPos = pos + insertText.indexOf('(') + 1;
+        input.selectionStart = input.selectionEnd = cursorPos;
+        input.focus();
+        document.getElementById('result').textContent = "";
+    }
+
+    // helper: insert text at current cursor position, return start index of insertion
+    function insertAtCursor(input, text) {
+        const start = input.selectionStart !== undefined ? input.selectionStart : input.value.length;
+        const before = input.value.substring(0, start);
+        const after = input.value.substring(start);
+        input.value = before + text + after;
+        return start;
+    }
+    // ...existing code...
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Temi's simple Math Solver</h1>
+        <input type="text" id="mathInput" placeholder="Enter a math question (e.g. 2+2)" />
+        <button onclick="solveMath()">Solve</button>
+
+        <div id="rootControls">
+            <button onclick="insertRootSymbol()">√</button>
+            <button onclick="insertCubeRoot()">∛</button>
+            <button onclick="insertXRoot()">n√</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+</body>
+</html>
